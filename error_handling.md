@@ -7,18 +7,28 @@ Clickhouse Server runs with a custom middleware and returns custom error message
 `client.query` function should return the custom error message from the Clickhouse Server.
 
 ## Reality
-Returns `OperationalError` or a `DatabaseError` from the stack trace **without** the custom error message.
+- main.py (Line 26)
+
+```python
+result = client.query('SELECT * FROM test_table')
 ```
+
+Returned `OperationalError` or a `DatabaseError` from the stack trace **without** the custom error message.
+
+```
+# Stack Trace
 clickhouse_connect.driver.exceptions.OperationalError: HTTPDriver for http://localhost:8123 returned response code XXX
  25.8.2.29      UTC
 ```
 
-## Investigation 
+## Investigation
+
 ### query (Entry Point)
 The query function performs either the `command` or `_query_with_context` function based on the query type.
 
-- clickhouse_connect/driver/client.py (Line 190)
-```
+- `clickhouse_connect/driver/client.py` (Line 177)
+
+```python
 query_context = self.create_query_context(**kwargs)
 if query_context.is_command:
     response = self.command(query,
@@ -31,17 +41,39 @@ if query_context.is_command:
 return self._query_with_context(query_context)
 ```
 
-### __query_with_context
-The `_raw_request` function is where the client sends the request to the clickhouse server.
-- clickhouse_connect/driver/httpclient.py (Line 227)
+### _query_with_context / command
+- `_query_with_context`: `clickhouse_connect/driver/httpclient.py` (Line 190)
+- `command`: `clickhouse_connect/driver/httpclient.py` (Line 313)
+
+Both functions call the `_raw_request` function to enable the client to send the query request to the ClickHouse server.
+
+```python
+# command
+method = 'POST' if payload or fields else 'GET'
+response = self._raw_request(payload, params, headers, method, fields=fields)
+if response.data:
+    try:
+        result = response.data.decode()[:-1].split('\t')
+        if len(result) == 1:
+            try:
+                return int(result[0])
+            except ValueError:
+                return result[0]
+        return result
+    except UnicodeDecodeError:
+        return str(response.data)
+return QuerySummary(self._summary(response))
 ```
+
+```python
+# _query_with_context
 response = self._raw_request(body,
-                                params,
-                                headers,
-                                stream=True,
-                                retries=self.query_retries,
-                                fields=fields,
-                                server_wait=not context.streaming)
+                            params,
+                            headers,
+                            stream=True,
+                            retries=self.query_retries,
+                            fields=fields,
+                            server_wait=not context.streaming)
 byte_source = RespBuffCls(ResponseSource(response))  # pylint: disable=not-callable
 context.set_response_tz(self._check_tz_change(response.headers.get('X-ClickHouse-Timezone')))
 query_result = self._transform.parse_response(byte_source, context)
@@ -50,11 +82,12 @@ return query_result
 ```
 
 ### _raw_request
+- `clickhouse_connect/driver/httpclient.py` (Line 381)
+
 In this step, we notice that error handling is performed in `_error_handler` for non-200 response codes.
 
-- clickhouse_connect/driver/httpclient.py (Line 384)
-```
- if response.status in (429, 503, 504):
+```python
+if response.status in (429, 503, 504):
     if attempts > retries:
         self._error_handler(response, True)
     logger.debug('Retrying requests with status code %d', response.status)
@@ -63,13 +96,14 @@ elif error_handler:
 else:
     self._error_handler(response)
 ```
+
 ### _error_handler
-- clickhouse_connect/driver/httpclient.py (Line 366)
+- `clickhouse_connect/driver/httpclient.py` (Line 363)
 
 It is observed that for any 500 http errors, the `err_str` variable is returned.
 The `err_content` variable is also included if defined. The `get_response_data` function returns this variable.
 
-```
+```python
 if self.show_clickhouse_errors:
     try:
         err_content = get_response_data(response)
@@ -88,17 +122,18 @@ else:
 raise OperationalError(err_str) if retried else DatabaseError(err_str) from None
 ```
 
-### _error_handler
-The response body is expected to be returned in one of the following formats.
+### get_response_data
+- `clickhouse_connect/driver/httpclient.py` (Line 142)
 
-1. ZSTD compressed: If the content-encoding header is 'zstd', the body should be Zstandard-compressed bytes.
-2. LZ4 compressed: If the content-encoding header is 'lz4', the body should be LZ4-compressed bytes.
-3. Uncompressed: If there is no recognized compression, the body should be plain bytes.
+The response body is expected to be returned in one of the following formats:
 
-To ensure that we return the error response properly, the request handler of the custom middleware should specify the 
-correct encoding format in its `content-encoding` header.
+1. **ZSTD compressed**: If the `content-encoding` header is `'zstd'`, the body should be Zstandard-compressed bytes.
+2. **LZ4 compressed**: If the `content-encoding` header is `'lz4'`, the body should be LZ4-compressed bytes.
+3. **Uncompressed**: If there is no recognized compression, the body should be plain bytes.
 
-```
+To ensure that we return the error response properly, the request handler of the custom middleware should specify the correct encoding format in its `content-encoding` header.
+
+```python
 def get_response_data(response: HTTPResponse) -> bytes:
     encoding = response.headers.get('content-encoding', None)
     if encoding == 'zstd':
