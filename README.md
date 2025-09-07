@@ -18,6 +18,11 @@ This project explores the clickhouse-connect Python library for interacting with
 - Verify the server at `http://localhost:8123`.
 
 ### 2. Run main.py (clickhouse-connect)
+- Setup virtualenv
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 - Install dependencies:
    ```bash
    pip install -r requirements.txt
