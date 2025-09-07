@@ -1,4 +1,4 @@
-# Clickhouse-connect Error Handling
+# Error Handling in Query Function
 
 ## Scenario
 - Clickhouse Server runs with a custom middleware and returns custom error message with 503 response.
