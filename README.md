@@ -1,4 +1,4 @@
-# Clickhouse Client
+# Clickhouse Client Error Handling
 
 This project explores the clickhouse-connect Python library and how it handles errors when communicating with Clickhouse.
 
