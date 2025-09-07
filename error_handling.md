@@ -17,7 +17,7 @@ Returned `OperationalError` or a `DatabaseError` from the stack trace **without*
 
 ```
 # Stack Trace
-clickhouse_connect.driver.exceptions.OperationalError: HTTPDriver for http://localhost:8123 returned response code XXX
+clickhouse_connect.driver.exceptions.OperationalError: HTTPDriver for http://localhost:8123 returned response code 5XX
  25.8.2.29      UTC
 ```
 
