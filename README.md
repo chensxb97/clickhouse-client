@@ -5,6 +5,7 @@ This project explores the clickhouse-connect Python library for interacting with
 ## Prerequisites
 - Docker
 - Python 3.8.9
+- uv
 
 ## Setup Instructions
 ### 1. Run ClickHouse Server
@@ -24,9 +25,9 @@ This project explores the clickhouse-connect Python library for interacting with
    source venv/bin/activate
    ```
 
-- Install dependencies:
+- Install dependencies using uv
    ```bash
-   pip install -r requirements.txt
+   uv pip install -r requirements.txt
    ```
 
 - Run the Python script to connect to the ClickHouse instance:
