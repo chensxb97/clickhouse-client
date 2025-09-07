@@ -4,10 +4,10 @@
 Clickhouse Server runs with a custom middleware and returns custom error message with 503 response.
 
 ## Expectation
-Query function returns the custom error message from the Clickhouse Server.
+`client.query` function should return the custom error message from the Clickhouse Server.
 
 ## Reality
-Returns OperationalError or a DatabaseError from the stack trace without the custom error message.
+Returns `OperationalError` or a `DatabaseError` from the stack trace **without** the custom error message.
 ```
 clickhouse_connect.driver.exceptions.OperationalError: HTTPDriver for http://localhost:8123 returned response code XXX
  25.8.2.29      UTC
