@@ -1,16 +1,22 @@
 # Error Handling in Query Function
 
 ## Scenario
-- Clickhouse Server runs with a custom middleware and returns custom error message with 503 response.
-- Expectation: Query function returns the custom error message.
-- Reality: Returns OperationalError or a DatabaseError
+Clickhouse Server runs with a custom middleware and returns custom error message with 503 response.
 
+## Expectation
+Query function returns the custom error message from the Clickhouse Server.
+
+## Reality
+Returns OperationalError or a DatabaseError from the stack trace without the custom error message.
 ```
 clickhouse_connect.driver.exceptions.OperationalError: HTTPDriver for http://localhost:8123 returned response code XXX
  25.8.2.29      UTC
 ```
 
+## Investigation 
 ### query (Entry Point)
+The query function performs either the `command` or `_query_with_context` function based on the query type.
+
 - clickhouse_connect/driver/client.py (Line 190)
 ```
 query_context = self.create_query_context(**kwargs)
@@ -24,7 +30,28 @@ if query_context.is_command:
     return QueryResult([response] if isinstance(response, list) else [[response]])
 return self._query_with_context(query_context)
 ```
-### _query_with_context
+
+### __query_with_context
+The `_raw_request` function is where the client sends the request to the clickhouse server.
+- clickhouse_connect/driver/httpclient.py (Line 227)
+```
+response = self._raw_request(body,
+                                params,
+                                headers,
+                                stream=True,
+                                retries=self.query_retries,
+                                fields=fields,
+                                server_wait=not context.streaming)
+byte_source = RespBuffCls(ResponseSource(response))  # pylint: disable=not-callable
+context.set_response_tz(self._check_tz_change(response.headers.get('X-ClickHouse-Timezone')))
+query_result = self._transform.parse_response(byte_source, context)
+query_result.summary = self._summary(response)
+return query_result
+```
+
+### _raw_request
+In this step, we notice that error handling is performed in `_error_handler` for non-200 response codes.
+
 - clickhouse_connect/driver/httpclient.py (Line 384)
 ```
  if response.status in (429, 503, 504):
@@ -39,8 +66,8 @@ else:
 ### _error_handler
 - clickhouse_connect/driver/httpclient.py (Line 366)
 
-From the stack trace, it is observed that for any 500 http errors, the err_str variable is returned.
-THe err_content is also included if defined. We should investigate the `get_response_data` function which returns this variable.
+It is observed that for any 500 http errors, the `err_str` variable is returned.
+The `err_content` variable is also included if defined. The `get_response_data` function returns this variable.
 
 ```
 if self.show_clickhouse_errors:
