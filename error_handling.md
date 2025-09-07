@@ -3,7 +3,12 @@
 ## Scenario
 - Clickhouse Server runs with a custom middleware and returns custom error message with 503 response.
 - Expectation: Query function returns the custom error message.
-- Reality: Returns OperationalError or DatabaseError objects
+- Reality: Returns OperationalError or a DatabaseError
+
+```
+clickhouse_connect.driver.exceptions.OperationalError: HTTPDriver for http://localhost:8123 returned response code XXX
+ 25.8.2.29      UTC
+```
 
 ### query (Entry Point)
 - clickhouse_connect/driver/client.py (Line 190)
@@ -33,6 +38,10 @@ else:
 ```
 ### _error_handler
 - clickhouse_connect/driver/httpclient.py (Line 366)
+
+From the stack trace, it is observed that for any 500 http errors, the err_str variable is returned.
+THe err_content is also included if defined. We should investigate the `get_response_data` function which returns this variable.
+
 ```
 if self.show_clickhouse_errors:
     try:
@@ -51,3 +60,29 @@ else:
 
 raise OperationalError(err_str) if retried else DatabaseError(err_str) from None
 ```
+
+### _error_handler
+The response body is expected to be returned in one of the following formats.
+
+1. ZSTD compressed: If the content-encoding header is 'zstd', the body should be Zstandard-compressed bytes.
+2. LZ4 compressed: If the content-encoding header is 'lz4', the body should be LZ4-compressed bytes.
+3. Uncompressed: If there is no recognized compression, the body should be plain bytes.
+
+To ensure that we return the error response properly, the request handler of the custom middleware should specify the 
+correct encoding format in its `content-encoding` header.
+
+```
+def get_response_data(response: HTTPResponse) -> bytes:
+    encoding = response.headers.get('content-encoding', None)
+    if encoding == 'zstd':
+        try:
+            zstd_decom = zstandard.ZstdDecompressor()
+            return zstd_decom.stream_reader(response.data).read()
+        except zstandard.ZstdError:
+            pass
+    if encoding == 'lz4':
+        lz4_decom = lz4.frame.LZ4FrameDecompressor()
+        return lz4_decom.decompress(response.data, len(response.data))
+    return response.data
+```
+
