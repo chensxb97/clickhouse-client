@@ -1,4 +1,4 @@
-# ClickHouse Client PoC
+# ClickHouse Client
 
 This project explores the clickhouse-connect Python library for interacting with Clickhouse.
 
@@ -23,7 +23,7 @@ This project explores the clickhouse-connect Python library for interacting with
    python3 -m venv venv
    source venv/bin/activate
    ```
-   
+
 - Install dependencies:
    ```bash
    pip install -r requirements.txt
