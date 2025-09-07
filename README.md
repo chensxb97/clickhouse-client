@@ -2,6 +2,8 @@
 
 This project explores the clickhouse-connect Python library and how it handles errors when communicating with Clickhouse.
 
+A short report on HTTP 5XX error handling is documented in [error_handling.md](https://github.com/chensxb97/clickhouse-client-error-handling/blob/main/error_handling.md).
+
 ## Prerequisites
 - Docker
 - Python 3.8.9
