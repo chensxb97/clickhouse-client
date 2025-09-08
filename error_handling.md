@@ -3,10 +3,10 @@
 ## Scenario
 Clickhouse Server runs with a custom middleware and returns custom error message with 503 response.
 
-## Expectation
+### Expectation
 `client.query` function should return the custom error message from the Clickhouse Server.
 
-## Reality
+### Reality
 - main.py (Line 26)
 
 ```python
@@ -21,7 +21,20 @@ clickhouse_connect.driver.exceptions.OperationalError: HTTPDriver for http://loc
  25.8.2.29      UTC
 ```
 
+### Problem
+Error message returned from the custom middleware, did not start with an appropriate error code (prefix: "Code "). Due to the missing error code, the custom error message was not appended with the top-level error title.
+```
+if err_msg.startswith('Code'):
+    err_str = f'{err_str}\n {err_msg}'
+```
+`err_str` was returned without `err_msg`.
+
+### Solution
+Every custom middleware error must be appended with an appropriate error code in this format 'Code: XXX, (... remaining 
+error msg).
+
 ## Investigation
+A deep dive from the entry point to the error handling function.
 
 ### query (Entry Point)
 The query function performs either the `command` or `_query_with_context` function based on the query type.
@@ -132,6 +145,3 @@ if self.show_clickhouse_errors:
 else:
     err_str = 'The ClickHouse server returned an error.'
 ```
-
-## Solution
-**Every custom middleware error must be appended with an appropriate error code in this format 'Code: XXX, (... remaining error msg).**
