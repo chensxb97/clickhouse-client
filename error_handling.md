@@ -30,9 +30,8 @@ if err_msg.startswith('Code'):
 `err_str` was returned without `err_msg`.
 
 ### Solution
-Every custom middleware error must be appended with an appropriate error code in this format 'Code: XXX, (... remaining 
-error msg).
-
+Every custom middleware error must be appended with an appropriate error code in this format `Code: XXX, (... remaining 
+error msg).`
 ## Investigation
 A deep dive from the entry point to the error handling function.
 
