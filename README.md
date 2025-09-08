@@ -29,7 +29,7 @@ A short report on HTTP 5XX error handling is documented in [error_handling.md](h
 
 - Install dependencies using uv
    ```bash
-   uv pip install clickhouse-connect
+   uv pip install clickhouse-connect==0.8.18
    ```
 
 - Run the Python script to connect to the ClickHouse instance

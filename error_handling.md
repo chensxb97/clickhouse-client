@@ -1,5 +1,9 @@
 # Error Handling in Query Function
 
+## Environment
+Python 3.11
+clickhouse-connect 0.8.18
+
 ## Scenario
 Clickhouse Server runs with a custom middleware and returns custom error message with 503 response.
 
@@ -32,6 +36,7 @@ if err_msg.startswith('Code'):
 ### Solution
 Every custom middleware error must be appended with an appropriate error code in this format `Code: XXX, (... remaining 
 error msg).`
+
 ## Investigation
 A deep dive from the entry point to the error handling function.
 
@@ -54,8 +59,8 @@ return self._query_with_context(query_context)
 ```
 
 ### _query_with_context / command
-- `_query_with_context`: `clickhouse_connect/driver/httpclient.py` (Line 190)
-- `command`: `clickhouse_connect/driver/httpclient.py` (Line 313)
+- `_query_with_context`: `clickhouse_connect/driver/httpclient.py` (Line 206)
+- `command`: `clickhouse_connect/driver/httpclient.py` (Line 331)
 
 Both functions call the `_raw_request` function to enable the client to send the query request to the ClickHouse server.
 
@@ -94,7 +99,7 @@ return query_result
 ```
 
 ### _raw_request
-- `clickhouse_connect/driver/httpclient.py` (Line 381)
+- `clickhouse_connect/driver/httpclient.py` (Line 404)
 
 In this step, we notice that error handling is performed in `_error_handler` for non-200 response codes.
 
@@ -110,7 +115,7 @@ else:
 ```
 
 ### _error_handler
-- `clickhouse_connect/driver/httpclient.py` (Line 363)
+- `clickhouse_connect/driver/httpclient.py` (Line 382)
 
 It is observed that for any 500 http errors, the `err_str` variable is returned.
 The `err_content` variable is also included if defined. The `get_response_data` function returns this variable.
