@@ -6,7 +6,7 @@ A short report on HTTP 5XX error handling is documented in [error_handling.md](h
 
 ## Prerequisites
 - Docker
-- Python 3.8.9
+- Python 3.11
 - uv
 
 ## Setup Instructions
@@ -29,7 +29,7 @@ A short report on HTTP 5XX error handling is documented in [error_handling.md](h
 
 - Install dependencies using uv
    ```bash
-   uv pip install -r requirements.txt
+   uv pip install clickhouse-connect
    ```
 
 - Run the Python script to connect to the ClickHouse instance
